@@ -4,6 +4,41 @@ import torch
 import torch.nn as nn
 import torch.nn.function as F
 from torch.autograd import Variable
+import torch.optim as optim
+torch.manual_seed(1)
+
+class BiLSTM_CRF(nn.Module):
+	def __init__(self,args):
+		super(BiLSTM_CRF,self).__init__()
+		self.embedding_dim=args.embedding_dim
+		self.hidden_dim=args.hidden_dim
+		self.vocab_size=args.vocab_size
+		self.tag_to_ix=args.tag_to_ix
+		self.tagset_size=len(args.tag_to_ix)
+		self.word_embeds=nn.Embedding(self.vocab_size,self.embedding_dim)
+		self.lstm=nn.LSTM(self.embedding_dim,hidden_dim//2,
+							num_layers=1,bidirectional=True)
+		self.hidden2tag=nn.Linear(hidden_dim,self.tagset_size)
+		self.transitions=nn.Parameter(
+			torch.randn(self.tagset_size,self.tagset_size))
+		self.hidden=self.init_hidden()
+	def forward(self,sentence):
+		#隐藏输入
+		self.hidden=(autograd.Variable(torch.randn(2,1,self.hidden_dim//2)),
+					autograd.Variable(torch.randn(2,1,self.hidden_dim//2)))
+		#将句子转换为句子矩阵，即词语变成词向量
+		embeds=self.word_embeds(sentence).view(len(sentence),1,-1)
+		#输入lstm,得到输出，其中输出大小为（句子长度，隐藏层*2）
+		lstm_out,self.hidden=self.lstm(embeds,self.hidden)
+		#转换lstm输出，（句子长度，隐藏层*2）
+		lstm_out=lstm_out.view(len(sentence),self.hidden_dim)
+		#全连接层，得到（句子长度，tagset_size）
+		lstm_feats=self.hidden2tag(lstm_out)
+		backpointers=[]
+		init_vvars=torch.Tensor(1,self.tagset_size).fill_(-10000.)
+		init_vvars[0][self.tag_to_ix[START_TAG]]=0
+		
+		
 
 
 
