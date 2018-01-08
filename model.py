@@ -37,6 +37,29 @@ class BiLSTM_CRF(nn.Module):
 		backpointers=[]
 		init_vvars=torch.Tensor(1,self.tagset_size).fill_(-10000.)
 		init_vvars[0][self.tag_to_ix[START_TAG]]=0
+		forward_var=autograd.Variable(init_vvars)
+		for feat in feats:
+			bptrs_t=[]
+			viterbivars_t=[]
+			for next_tag in range(self.tagset_size):
+				next_tag_var=forward_var+self.transitions[next_tag]
+				best_tag_id=argmax(next_tag_var)
+				bptrs_t.append(best_tag_id)
+				viterbivars_t.append(next_tag_var[0][best_tag_id])
+			forward_var=(torch.cat(viterbivars_t)+feat).view(1,-1)
+			backpointers.append(bptrs_t)
+		terminal_var=forward_var+self.transitions[self.tag_to_ix[STOP_TAG]]
+		best_tag_id=argmax(terminal_var)
+		path_score=terminal_var[0][best_tag_id]
+		best_path=[best_tag_id]
+		
+		for bptrs_t in reversed(backpointers):
+			best_tag_id=bptrs_t[best_tag_id]
+			best_path.append(best_tag_id)
+		start=best_path.pop()
+		assert start==self.tag_to_ix[START_TAG]
+		best_path.reverse()
+		
 		
 		
 
